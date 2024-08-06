@@ -1,0 +1,67 @@
+services:
+  redis-store:
+    image: redis:latest
+    container_name: redis_store
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-store-data:/data
+    networks:
+      - backend-network
+
+  redis-pubsub:
+    image: redis:latest
+    container_name: redis_pubsub
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-pubsub-data:/data
+    networks:
+      - backend-network
+
+  pubsub-server:
+    build:
+      context: ./pubsub-server
+    container_name: pubsub_server
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis-pubsub
+      - redis-store
+      - elasticsearch
+    networks:
+      - backend-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.7.0
+    container_name: elasticsearch
+    environment:
+      - "xpack.security.enabled=false"
+      - "discovery.type=single-node"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - backend-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.7.0
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - "ELASTICSEARCH_HOSTS=http://elasticsearch:9200"
+    depends_on:
+      - elasticsearch
+    networks:
+      - backend-network
+
+networks:
+  backend-network:
+    driver: bridge
+
+volumes:
+  redis-store-data:
+    driver: local
+  redis-pubsub-data:
+    driver: local
